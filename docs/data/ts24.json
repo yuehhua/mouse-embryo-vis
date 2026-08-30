@@ -1,7 +1,7 @@
 {
   "stage": "TS24",
   "n_organs": 17,
-  "total_faces": 329140,
+  "total_faces": 445810,
   "organs": [
     {
       "organ_id": "EMAPA:18010",
@@ -37,7 +37,7 @@
         76
       ],
       "voxels": 23829,
-      "faces": 29982
+      "faces": 59816
     },
     {
       "organ_id": "EMAPA:16688",
@@ -109,7 +109,7 @@
         204
       ],
       "voxels": 69296,
-      "faces": 29808
+      "faces": 57098
     },
     {
       "organ_id": "EMAPA:17838",
@@ -169,7 +169,7 @@
         204
       ],
       "voxels": 268115,
-      "faces": 30000
+      "faces": 59796
     },
     {
       "organ_id": "EMAPA:18321",
@@ -205,7 +205,7 @@
         51
       ],
       "voxels": 102435,
-      "faces": 29996
+      "faces": 59746
     }
   ]
 }

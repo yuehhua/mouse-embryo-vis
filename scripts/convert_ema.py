@@ -166,7 +166,7 @@ def main() -> int:
                     help="skip components smaller than this many voxels")
     ap.add_argument("--step", type=int, default=2, help="marching_cubes step_size (>=1)")
     ap.add_argument("--smooth", type=int, default=5, help="Taubin smoothing iterations")
-    ap.add_argument("--max-faces", type=int, default=20000,
+    ap.add_argument("--max-faces", type=int, default=60000,
                     help="decimate any organ above this many faces (0 = no cap)")
     ap.add_argument("--interp-factor", type=int, default=0,
                     help="shape-based SDF upsampling between sections (0/1 = off; biharmonic "
@@ -177,7 +177,7 @@ def main() -> int:
                     help="SDF resample order: 1=linear (safe), 3=cubic (can overshoot)")
     ap.add_argument("--smooth-method", choices=("taubin", "biharmonic"), default="biharmonic",
                     help="mesh smoothing: biharmonic surface fairing (libigl) or taubin")
-    ap.add_argument("--lam", type=float, default=0.0002,
+    ap.add_argument("--lam", type=float, default=0.00001,
                     help="biharmonic fairing strength on the unit-normalised mesh (larger = smoother)")
     args = ap.parse_args()
 
