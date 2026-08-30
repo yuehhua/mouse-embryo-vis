@@ -1,7 +1,7 @@
 {
   "stage": "TS23",
   "n_organs": 13,
-  "total_faces": 165928,
+  "total_faces": 345196,
   "organs": [
     {
       "organ_id": "EMAPA:17701",
@@ -13,7 +13,7 @@
         0
       ],
       "voxels": 5500,
-      "faces": 29258
+      "faces": 59934
     },
     {
       "organ_id": "EMAPA:19106",
@@ -25,7 +25,7 @@
         127
       ],
       "voxels": 2777,
-      "faces": 6256
+      "faces": 14840
     },
     {
       "organ_id": "EMAPA:19143",
@@ -37,7 +37,7 @@
         204
       ],
       "voxels": 2322,
-      "faces": 5548
+      "faces": 13684
     },
     {
       "organ_id": "EMAPA:17503",
@@ -49,7 +49,7 @@
         204
       ],
       "voxels": 1752,
-      "faces": 5120
+      "faces": 12638
     },
     {
       "organ_id": "EMAPA:16974",
@@ -61,7 +61,7 @@
         127
       ],
       "voxels": 13701,
-      "faces": 14918
+      "faces": 37074
     },
     {
       "organ_id": "EMAPA:17577",
@@ -73,7 +73,7 @@
         204
       ],
       "voxels": 10668,
-      "faces": 14324
+      "faces": 32676
     },
     {
       "organ_id": "EMAPA:17838",
@@ -85,7 +85,7 @@
         153
       ],
       "voxels": 379,
-      "faces": 1104
+      "faces": 2364
     },
     {
       "organ_id": "EMAPA:17185",
@@ -97,7 +97,7 @@
         178
       ],
       "voxels": 4476,
-      "faces": 5408
+      "faces": 13824
     },
     {
       "organ_id": "EMAPA:17021",
@@ -109,7 +109,7 @@
         76
       ],
       "voxels": 3135,
-      "faces": 8616
+      "faces": 20436
     },
     {
       "organ_id": "EMAPA:16846",
@@ -121,7 +121,7 @@
         25
       ],
       "voxels": 64265,
-      "faces": 42372
+      "faces": 59578
     },
     {
       "organ_id": "EMAPA:18321",
@@ -133,7 +133,7 @@
         76
       ],
       "voxels": 936,
-      "faces": 3218
+      "faces": 7886
     },
     {
       "organ_id": "EMAPA:17373",
@@ -145,7 +145,7 @@
         127
       ],
       "voxels": 4811,
-      "faces": 7832
+      "faces": 18792
     },
     {
       "organ_id": "EMAPA:16728",
@@ -157,7 +157,7 @@
         102
       ],
       "voxels": 15577,
-      "faces": 21954
+      "faces": 51470
     }
   ]
 }
