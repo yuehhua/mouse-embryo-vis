@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guess the Organ — Mouse Embryo (eMouseAtlas)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --accent:#4493f8; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overflow:hidden; }
+  #app { display:flex; height:100%; }
+  #view { flex:1; position:relative; }
+  canvas { display:block; }
+  #panel { width:340px; background:var(--panel); border-left:1px solid var(--line);
+    padding:20px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; }
+  h1 { font-size:18px; margin:0; line-height:1.3; }
+  .sub { font-size:12px; color:#9da7b3; margin-top:-6px; }
+  .score { font-size:14px; color:#9da7b3; }
+  .score b { color:var(--fg); font-size:22px; }
+  #question { font-size:15px; font-weight:600; min-height:20px; }
+  .choices { display:flex; flex-direction:column; gap:8px; }
+  button.choice { text-align:left; padding:11px 13px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--line); background:#1f2630; color:var(--fg); font-size:14px;
+    transition: background .12s, border-color .12s; }
+  button.choice:hover:not(:disabled) { border-color:var(--accent); background:#232c38; }
+  button.choice:disabled { cursor:default; opacity:.95; }
+  button.choice.correct { background:#1a7f37; border-color:#2ea043; color:#fff; }
+  button.choice.wrong { background:#a4243b; border-color:#da3633; color:#fff; }
+  #reveal { font-size:13px; color:#c9d3de; line-height:1.5; min-height:40px; }
+  #reveal .name { color:#fff; font-weight:700; font-size:15px; }
+  #next, #restart { padding:11px; border-radius:8px; border:none; cursor:pointer;
+    background:var(--accent); color:#fff; font-size:14px; font-weight:600; }
+  #next[hidden] { display:none; }
+  .hint { font-size:11px; color:#6e7681; margin-top:auto; line-height:1.5; }
+  .hint a { color:#6e7681; }
+  #loading { position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; font-size:14px; color:#9da7b3; }
+  #summary { display:none; flex-direction:column; gap:12px; }
+  #summary.show { display:flex; }
+  .quiz.hide { display:none; }
+  .quiz { display:flex; flex-direction:column; gap:14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="view"><div id="loading">Loading mouse embryo…</div></div>
+  <aside id="panel">
+    <div>
+      <h1>Guess the Organ</h1>
+      <div class="sub">Mouse embryo · Theiler Stage 26 (~E18) · eMouseAtlas EMA102</div>
+    </div>
+    <div class="score">Score <b id="score">0</b> / <span id="total">0</span></div>
+
+    <div class="quiz" id="quiz">
+      <div id="question">Rotate the embryo, then name the highlighted organ.</div>
+      <div class="choices" id="choices"></div>
+      <div id="reveal"></div>
+      <button id="next" hidden>Next organ →</button>
+    </div>
+
+    <div id="summary">
+      <div id="summaryText"></div>
+      <button id="restart">Play again</button>
+    </div>
+
+    <div class="hint">
+      Drag to rotate · scroll to zoom · right-drag to pan.<br />
+      Data: eMouseAtlas / EMAP (CC-BY). Richardson L et al., <i>Nucleic Acids Res</i> 2014.
+    </div>
+  </aside>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

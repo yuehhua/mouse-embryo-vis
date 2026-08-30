@@ -1,0 +1,247 @@
+{
+  "stage": "TS26",
+  "n_organs": 20,
+  "total_faces": 324312,
+  "organs": [
+    {
+      "organ_id": "EMAPA:16688",
+      "display_name": "heart atrium",
+      "mesh_node": "EMAPA16688",
+      "rgb": [
+        75,
+        0,
+        130
+      ],
+      "voxels": 1465534,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:18321",
+      "display_name": "bladder",
+      "mesh_node": "EMAPA18321",
+      "rgb": [
+        0,
+        128,
+        128
+      ],
+      "voxels": 3577,
+      "faces": 1080
+    },
+    {
+      "organ_id": "EMAPA:17701",
+      "display_name": "diaphragm",
+      "mesh_node": "EMAPA17701",
+      "rgb": [
+        70,
+        130,
+        180
+      ],
+      "voxels": 82682,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:19143",
+      "display_name": "femur",
+      "mesh_node": "EMAPA19143",
+      "rgb": [
+        222,
+        184,
+        135
+      ],
+      "voxels": 40254,
+      "faces": 15270
+    },
+    {
+      "organ_id": "EMAPA:16895",
+      "display_name": "forebrain",
+      "mesh_node": "EMAPA16895",
+      "rgb": [
+        0,
+        128,
+        128
+      ],
+      "voxels": 1480515,
+      "faces": 19998
+    },
+    {
+      "organ_id": "EMAPA:17331",
+      "display_name": "heart ventricle",
+      "mesh_node": "EMAPA17331",
+      "rgb": [
+        205,
+        92,
+        92
+      ],
+      "voxels": 946373,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:16916",
+      "display_name": "hindbrain",
+      "mesh_node": "EMAPA16916",
+      "rgb": [
+        139,
+        0,
+        139
+      ],
+      "voxels": 257027,
+      "faces": 19999
+    },
+    {
+      "organ_id": "EMAPA:19106",
+      "display_name": "humerus",
+      "mesh_node": "EMAPA19106",
+      "rgb": [
+        25,
+        25,
+        112
+      ],
+      "voxels": 47866,
+      "faces": 10888
+    },
+    {
+      "organ_id": "EMAPA:17838",
+      "display_name": "lens",
+      "mesh_node": "EMAPA17838",
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "voxels": 95284,
+      "faces": 10224
+    },
+    {
+      "organ_id": "EMAPA:16846",
+      "display_name": "liver",
+      "mesh_node": "EMAPA16846",
+      "rgb": [
+        0,
+        128,
+        128
+      ],
+      "voxels": 639897,
+      "faces": 19999
+    },
+    {
+      "organ_id": "EMAPA:16728",
+      "display_name": "lung",
+      "mesh_node": "EMAPA16728",
+      "rgb": [
+        221,
+        160,
+        221
+      ],
+      "voxels": 213279,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:17373",
+      "display_name": "metanephros",
+      "mesh_node": "EMAPA17373",
+      "rgb": [
+        218,
+        165,
+        32
+      ],
+      "voxels": 73708,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:16974",
+      "display_name": "midbrain",
+      "mesh_node": "EMAPA16974",
+      "rgb": [
+        50,
+        205,
+        50
+      ],
+      "voxels": 1262227,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:17503",
+      "display_name": "pancreas",
+      "mesh_node": "EMAPA17503",
+      "rgb": [
+        102,
+        205,
+        170
+      ],
+      "voxels": 45817,
+      "faces": 12328
+    },
+    {
+      "organ_id": "EMAPA:18010",
+      "display_name": "rib",
+      "mesh_node": "EMAPA18010",
+      "rgb": [
+        0,
+        128,
+        128
+      ],
+      "voxels": 103488,
+      "faces": 20000
+    },
+    {
+      "organ_id": "EMAPA:17577",
+      "display_name": "spinal cord",
+      "mesh_node": "EMAPA17577",
+      "rgb": [
+        64,
+        224,
+        208
+      ],
+      "voxels": 106099,
+      "faces": 19999
+    },
+    {
+      "organ_id": "EMAPA:18767",
+      "display_name": "spleen",
+      "mesh_node": "EMAPA18767",
+      "rgb": [
+        199,
+        21,
+        133
+      ],
+      "voxels": 9022,
+      "faces": 1060
+    },
+    {
+      "organ_id": "EMAPA:17021",
+      "display_name": "stomach",
+      "mesh_node": "EMAPA17021",
+      "rgb": [
+        0,
+        250,
+        154
+      ],
+      "voxels": 52641,
+      "faces": 17904
+    },
+    {
+      "organ_id": "EMAPA:18768",
+      "display_name": "thymus",
+      "mesh_node": "EMAPA18768",
+      "rgb": [
+        210,
+        105,
+        30
+      ],
+      "voxels": 30662,
+      "faces": 15564
+    },
+    {
+      "organ_id": "EMAPA:17185",
+      "display_name": "tongue",
+      "mesh_node": "EMAPA17185",
+      "rgb": [
+        0,
+        255,
+        255
+      ],
+      "voxels": 75579,
+      "faces": 19999
+    }
+  ]
+}

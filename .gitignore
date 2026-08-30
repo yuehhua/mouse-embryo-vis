@@ -1,0 +1,13 @@
+# Python tooling (offline mesh-conversion build step) — lives on disk, never pushed
+.venv/
+.cache/
+__pycache__/
+*.pyc
+
+# Large raw source data (downloaded from eMouseAtlas DataShare) and build scratch
+data/ema/raw/
+data/ema/processed/
+node_modules/
+
+# OS / editor cruft
+.DS_Store
