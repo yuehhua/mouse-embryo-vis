@@ -1,7 +1,7 @@
 {
   "stage": "TS24",
   "n_organs": 17,
-  "total_faces": 686426,
+  "total_faces": 446452,
   "organs": [
     {
       "organ_id": "EMAPA:18010",
@@ -13,7 +13,7 @@
         204
       ],
       "voxels": 3239,
-      "faces": 59960
+      "faces": 29316
     },
     {
       "organ_id": "EMAPA:19143",
@@ -25,7 +25,7 @@
         127
       ],
       "voxels": 577,
-      "faces": 10588
+      "faces": 4644
     },
     {
       "organ_id": "EMAPA:17701",
@@ -37,7 +37,7 @@
         76
       ],
       "voxels": 23829,
-      "faces": 59700
+      "faces": 60000
     },
     {
       "organ_id": "EMAPA:16688",
@@ -49,7 +49,7 @@
         153
       ],
       "voxels": 20019,
-      "faces": 44916
+      "faces": 22120
     },
     {
       "organ_id": "EMAPA:17331",
@@ -61,7 +61,7 @@
         204
       ],
       "voxels": 29127,
-      "faces": 41696
+      "faces": 19080
     },
     {
       "organ_id": "EMAPA:18767",
@@ -73,7 +73,7 @@
         51
       ],
       "voxels": 1866,
-      "faces": 7680
+      "faces": 3604
     },
     {
       "organ_id": "EMAPA:18768",
@@ -85,7 +85,7 @@
         204
       ],
       "voxels": 5878,
-      "faces": 13748
+      "faces": 6076
     },
     {
       "organ_id": "EMAPA:16974",
@@ -97,7 +97,7 @@
         255
       ],
       "voxels": 40924,
-      "faces": 47308
+      "faces": 20640
     },
     {
       "organ_id": "EMAPA:17577",
@@ -109,7 +109,7 @@
         204
       ],
       "voxels": 69296,
-      "faces": 59476
+      "faces": 57098
     },
     {
       "organ_id": "EMAPA:17838",
@@ -121,7 +121,7 @@
         76
       ],
       "voxels": 2039,
-      "faces": 6544
+      "faces": 3172
     },
     {
       "organ_id": "EMAPA:17503",
@@ -133,7 +133,7 @@
         0
       ],
       "voxels": 10017,
-      "faces": 42406
+      "faces": 19426
     },
     {
       "organ_id": "EMAPA:17185",
@@ -145,7 +145,7 @@
         229
       ],
       "voxels": 35419,
-      "faces": 50236
+      "faces": 22432
     },
     {
       "organ_id": "EMAPA:17021",
@@ -157,7 +157,7 @@
         255
       ],
       "voxels": 17229,
-      "faces": 47318
+      "faces": 22010
     },
     {
       "organ_id": "EMAPA:16846",
@@ -169,7 +169,7 @@
         204
       ],
       "voxels": 268115,
-      "faces": 59976
+      "faces": 60000
     },
     {
       "organ_id": "EMAPA:18321",
@@ -181,7 +181,7 @@
         102
       ],
       "voxels": 9008,
-      "faces": 14972
+      "faces": 6976
     },
     {
       "organ_id": "EMAPA:17373",
@@ -193,7 +193,7 @@
         51
       ],
       "voxels": 25167,
-      "faces": 59970
+      "faces": 29858
     },
     {
       "organ_id": "EMAPA:16728",
@@ -205,7 +205,7 @@
         51
       ],
       "voxels": 102435,
-      "faces": 59932
+      "faces": 60000
     }
   ]
 }
