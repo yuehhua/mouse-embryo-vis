@@ -37,11 +37,18 @@ Interpolate the **shape**, not the labels. For each organ, per stage:
    where `EDT` is the Euclidean distance transform. `sdf > 0` inside the organ, `< 0`
    outside, `= 0` exactly on the surface. Unlike the 0/1 mask, this field varies smoothly.
 
-3. **Cubic-spline upsampling along the section axis.** Resample the SDF, increasing
-   resolution by an integer `factor` **only along the section-stacking axis** (the in-plane
-   section resolution is already fine). We use a cubic B-spline (`scipy.ndimage.zoom`,
-   `order=3`). Because the SDF is smooth, the spline invents physically plausible
-   sub-section boundary positions instead of repeating each section.
+3. **Resample the SDF along the section axis.** Increase resolution by an integer `factor`
+   **only along the section-stacking axis** (the in-plane section resolution is already
+   fine), using `scipy.ndimage.zoom`. Because the SDF is smooth, the resampler invents
+   plausible sub-section boundary positions instead of repeating each section.
+
+   We use **linear interpolation (`order=1`)** by default. It is *monotone* between samples,
+   so it cannot overshoot and cannot create spurious zero-crossings. Cubic B-spline
+   (`order=3`) is smoother in principle but **overshoots on high-resolution organs with
+   sharp features**, producing SDF ripples that cross zero and shatter the surface into
+   spikes — we observed exactly this on the large TS26 liver, so cubic is opt-in only
+   (`--interp-order 3`). Residual C0 kinks from linear are removed by the light Taubin
+   mesh-smoothing in step 6.
 
 4. **Re-threshold.** The interpolated organ is `sdf_up ≥ 0`. This binary volume now has the
    boundary sampled `factor`× finer between the original sections, so the terrace steps are

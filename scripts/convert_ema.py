@@ -43,13 +43,18 @@ def detect_section_axis(body: np.ndarray) -> int:
     return int(np.argmax(scores))
 
 
-def shape_interpolate(mask: np.ndarray, axis: int, factor: int):
-    """Shape-based (Raya & Udupa 1990) cubic-spline interpolation between sections.
+def shape_interpolate(mask: np.ndarray, axis: int, factor: int, order: int = 1):
+    """Shape-based (Raya & Udupa 1990) interpolation between histological sections.
 
-    Labels are categorical, so we cannot spline the label IDs. Instead we turn the binary
-    mask into a *signed distance field* (positive inside, negative outside), cubic-spline
-    upsample that smooth field along the section axis, then re-threshold at 0. This
-    interpolates the organ *boundary* smoothly between sections, removing the terracing.
+    Labels are categorical, so we cannot interpolate the label IDs. Instead we turn the
+    binary mask into a *signed distance field* (positive inside, negative outside),
+    resample that smooth field along the section axis, then re-threshold at 0 — which
+    interpolates the organ *boundary* smoothly between sections and removes the terracing.
+
+    order=1 (linear) is the default: it is monotone between samples, so it cannot overshoot
+    and introduce spurious zero-crossings. order=3 (cubic B-spline) is smoother but can
+    overshoot on high-resolution organs with sharp features, shattering the surface — so it
+    is opt-in.
 
     Returns (upsampled_mask, spacing) where spacing keeps physical proportions.
     """
@@ -58,8 +63,7 @@ def shape_interpolate(mask: np.ndarray, axis: int, factor: int):
     sdf = (distance_transform_edt(mask) - distance_transform_edt(~mask)).astype(np.float32)
     factors = [1.0, 1.0, 1.0]
     factors[axis] = factor
-    # order=3 == cubic spline; only the section axis is upsampled, keeping arrays small
-    sdf_up = zoom(sdf, factors, order=3, mode="nearest")
+    sdf_up = zoom(sdf, factors, order=order, mode="nearest")
     spacing = [1.0, 1.0, 1.0]
     spacing[axis] = 1.0 / factor                            # so 1 upsampled voxel = 1/factor
     return sdf_up >= 0.0, tuple(spacing)
@@ -110,6 +114,8 @@ def main() -> int:
                     help="shape-based cubic-spline upsampling between sections (0/1 = off)")
     ap.add_argument("--interp-axis", type=int, default=-1,
                     help="section-stacking axis (-1 = auto-detect)")
+    ap.add_argument("--interp-order", type=int, default=1,
+                    help="SDF resample order: 1=linear (safe), 3=cubic (can overshoot)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -154,7 +160,7 @@ def main() -> int:
 
         if section_axis >= 0:
             # interpolate boundary between sections, then mesh at step=1 for the fine detail
-            sub, spc = shape_interpolate(sub, section_axis, args.interp_factor)
+            sub, spc = shape_interpolate(sub, section_axis, args.interp_factor, args.interp_order)
             mesh = extract_mesh(sub, spc, 1, args.smooth, args.max_faces)
         else:
             mesh = extract_mesh(sub, spacing, args.step, args.smooth, args.max_faces)

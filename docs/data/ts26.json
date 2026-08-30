@@ -1,7 +1,7 @@
 {
   "stage": "TS26",
   "n_organs": 20,
-  "total_faces": 439626,
+  "total_faces": 438900,
   "organs": [
     {
       "organ_id": "EMAPA:16688",
@@ -25,7 +25,7 @@
         128
       ],
       "voxels": 3577,
-      "faces": 21628
+      "faces": 20900
     },
     {
       "organ_id": "EMAPA:17701",
@@ -121,7 +121,7 @@
         128
       ],
       "voxels": 639897,
-      "faces": 21998
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:16728",
