@@ -18,12 +18,26 @@ import json
 import re
 from pathlib import Path
 
+import igl
 import numpy as np
 import trimesh
 
+from convert_ema import biharmonic_fair
 from ema_labels import parse_labels
 
-FACTS_UNUSED = None  # facts live in the web app
+
+def densify_biharmonic(mesh: trimesh.Trimesh, upsample: int, lam: float) -> trimesh.Trimesh:
+    """Densify a surface (igl.upsample subdivision) then curvature-minimise it with
+    biharmonic fairing (igl cotangent Laplacian). On the clean high-res EMAP STL surfaces
+    this smooths residual section stepping without shattering (unlike the thin, fragmented
+    marching-cubes meshes from the down-sampled anatomy volume)."""
+    if upsample > 0:
+        V, F = igl.upsample(np.asarray(mesh.vertices, dtype=np.float64),
+                            np.asarray(mesh.faces, dtype=np.int64), upsample)
+        mesh = trimesh.Trimesh(V, F, process=False)
+    if lam > 0:
+        mesh = biharmonic_fair(mesh, lam)
+    return mesh
 
 
 def main() -> int:
@@ -34,6 +48,10 @@ def main() -> int:
     ap.add_argument("--out", default="docs/data")
     ap.add_argument("--max-faces", type=int, default=0,
                     help="decimate any organ above this many faces (0 = keep as-is)")
+    ap.add_argument("--densify", type=int, default=0,
+                    help="igl.upsample subdivision iterations before biharmonic fairing")
+    ap.add_argument("--lam", type=float, default=0.0,
+                    help="biharmonic fairing strength (0 = off)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -53,6 +71,8 @@ def main() -> int:
         if lab is None:
             continue
         mesh = trimesh.load(stl, process=False)
+        if args.densify or args.lam:
+            mesh = densify_biharmonic(mesh, args.densify, args.lam)
         if args.max_faces and len(mesh.faces) > args.max_faces:
             mesh = mesh.simplify_quadric_decimation(face_count=args.max_faces)
         r, g, b = lab.rgb
