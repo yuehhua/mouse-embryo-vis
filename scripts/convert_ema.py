@@ -2,8 +2,12 @@
 packed as one GLB per stage, plus a JSON manifest for the web app.
 
 Pipeline per label:
-  crop to bounding box -> marching_cubes (step_size controls triangle budget)
-  -> trimesh -> optional Laplacian smoothing -> assign the label's RGB colour.
+  crop to bounding box -> marching_cubes -> decimate -> biharmonic surface fairing
+  (libigl cotangent Laplacian) -> assign the label's RGB colour.
+
+Biharmonic fairing minimises bending energy, so it smooths across the section terraces of
+the serial-section reconstruction in one step (no separate interpolation/Taubin needed).
+Optional shape-based SDF interpolation (--interp-factor) is available but not used by default.
 
 Stable organ id = the EMAPA ontology id, so the same organ lines up across stages.
 
@@ -22,13 +26,66 @@ import json
 import time
 from pathlib import Path
 
+import igl
 import nibabel as nib
 import numpy as np
 import trimesh
 from scipy.ndimage import distance_transform_edt, find_objects, zoom
+from scipy.sparse import diags
+from scipy.sparse.linalg import spsolve
 from skimage import measure
 
 from ema_labels import parse_labels
+
+
+def biharmonic_fair(mesh: trimesh.Trimesh, lam: float) -> trimesh.Trimesh:
+    """Implicit biharmonic surface fairing (Desbrun et al.) with libigl's cotangent Laplacian.
+
+    Minimises bending energy anchored to the original vertices:
+        (M + lam * L M^-1 L) x' = M x
+    where L is the cotangent Laplacian and M the (Voronoi) mass matrix. The bilaplacian
+    L M^-1 L penalises curvature variation, giving a much 'fairer' surface than Taubin, while
+    the M x data term keeps it from shrinking. Solved once per coordinate (sparse, seconds).
+    """
+    # Clean first: decimation leaves duplicate vertices and slivers, whose degenerate angles
+    # give non-finite cotangent weights and a singular (NaN-producing) solve.
+    mesh = mesh.copy()
+    mesh.merge_vertices()
+    mesh.update_faces(mesh.nondegenerate_faces())
+    mesh.remove_unreferenced_vertices()
+    V = np.asarray(mesh.vertices, dtype=np.float64)
+    F = np.asarray(mesh.faces, dtype=np.int32)
+    if len(V) < 4 or len(F) < 4:
+        return mesh
+
+    def _taubin_fallback():
+        fb = mesh.copy()
+        trimesh.smoothing.filter_taubin(fb, iterations=12)
+        return fb
+
+    # Normalise to unit size so a single lam works across organs of any scale (cotangent
+    # weights are dimensionless, but the mass matrix scales with area, so raw lam is not
+    # scale-invariant). Fair in normalised space, then map back.
+    centre = V.mean(axis=0)
+    scale = float(np.ptp(V, axis=0).max()) or 1.0
+    Vn = (V - centre) / scale
+    L = igl.cotmatrix(Vn, F)                                  # sparse, negative semidefinite
+    M = igl.massmatrix(Vn, F, igl.MASSMATRIX_TYPE_VORONOI)    # sparse diagonal
+    if not (np.isfinite(L.data).all() and np.isfinite(M.data).all()):
+        return _taubin_fallback()
+    m = M.diagonal().copy()
+    m[m <= 1e-12] = 1e-12                                     # guard degenerate triangles
+    Minv = diags(1.0 / m)
+    Q = L @ Minv @ L                                          # bilaplacian (PSD)
+    A = (M + lam * Q).tocsc()
+    try:
+        Vn_new = spsolve(A, M @ Vn)
+    except Exception:
+        return _taubin_fallback()
+    if not np.isfinite(Vn_new).all():                        # singular / ill-conditioned
+        return _taubin_fallback()
+    Vnew = np.asarray(Vn_new) * scale + centre
+    return trimesh.Trimesh(vertices=Vnew, faces=F, process=False)
 
 
 def detect_section_axis(body: np.ndarray) -> int:
@@ -69,8 +126,8 @@ def shape_interpolate(mask: np.ndarray, axis: int, factor: int, order: int = 1):
     return sdf_up >= 0.0, tuple(spacing)
 
 
-def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int,
-                 max_faces: int) -> trimesh.Trimesh | None:
+def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int, max_faces: int,
+                 smooth_method: str = "taubin", lam: float = 0.0) -> trimesh.Trimesh | None:
     """Marching cubes on a padded binary mask -> smoothed, face-capped trimesh (or None).
 
     Returns the mesh in crop-local coordinates (origin at the crop corner, in original
@@ -87,12 +144,13 @@ def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int,
         return None
     verts = verts - np.asarray(spacing)   # undo the 1-voxel pad, in physical units
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
-    # Decimate FIRST (cheap), then smooth the light mesh — smoothing a 200k-face raw
-    # marching-cubes mesh is far too slow, and the result is visually the same.
+    # Decimate FIRST (cheap): fairing/smoothing a 200k-face raw mesh is far too slow.
     if max_faces > 0 and len(mesh.faces) > max_faces:
         mesh = mesh.simplify_quadric_decimation(face_count=max_faces)
-    if smooth > 0:
-        # Taubin smoothing keeps volume better than plain Laplacian; pure-python, no deps.
+    if smooth_method == "biharmonic" and lam > 0:
+        # biharmonic surface fairing does the cross-section smoothing (replaces Taubin)
+        mesh = biharmonic_fair(mesh, lam)
+    elif smooth > 0:
         trimesh.smoothing.filter_taubin(mesh, iterations=smooth)
     return mesh
 
@@ -111,11 +169,16 @@ def main() -> int:
     ap.add_argument("--max-faces", type=int, default=20000,
                     help="decimate any organ above this many faces (0 = no cap)")
     ap.add_argument("--interp-factor", type=int, default=0,
-                    help="shape-based cubic-spline upsampling between sections (0/1 = off)")
+                    help="shape-based SDF upsampling between sections (0/1 = off; biharmonic "
+                         "fairing already does the cross-section smoothing)")
     ap.add_argument("--interp-axis", type=int, default=-1,
                     help="section-stacking axis (-1 = auto-detect)")
     ap.add_argument("--interp-order", type=int, default=1,
                     help="SDF resample order: 1=linear (safe), 3=cubic (can overshoot)")
+    ap.add_argument("--smooth-method", choices=("taubin", "biharmonic"), default="biharmonic",
+                    help="mesh smoothing: biharmonic surface fairing (libigl) or taubin")
+    ap.add_argument("--lam", type=float, default=0.002,
+                    help="biharmonic fairing strength on the unit-normalised mesh (larger = smoother)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -161,10 +224,15 @@ def main() -> int:
         if section_axis >= 0:
             # interpolate boundary between sections, then mesh at step=1 for the fine detail
             sub, spc = shape_interpolate(sub, section_axis, args.interp_factor, args.interp_order)
-            mesh = extract_mesh(sub, spc, 1, args.smooth, args.max_faces)
+            mesh = extract_mesh(sub, spc, 1, args.smooth, args.max_faces,
+                                args.smooth_method, args.lam)
         else:
-            mesh = extract_mesh(sub, spacing, args.step, args.smooth, args.max_faces)
+            mesh = extract_mesh(sub, spacing, args.step, args.smooth, args.max_faces,
+                                args.smooth_method, args.lam)
         if mesh is None or len(mesh.faces) == 0:
+            continue
+        if not np.isfinite(mesh.vertices).all():
+            print(f"  !! skipped {lab.emapa} {lab.name}: non-finite vertices", flush=True)
             continue
         # shift the crop back into the shared model frame (original voxel units)
         mesh.apply_translation(np.asarray(lo, dtype=float))

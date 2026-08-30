@@ -13,6 +13,33 @@ volume you get a **terraced / "sliced" surface** — a staircase of flat steps p
 to the section axis. Simply smoothing the mesh afterwards blurs the steps but does not
 remove them; the underlying geometry is still stepped.
 
+## The method we use: biharmonic surface fairing
+
+The default pipeline is **marching cubes → decimate → biharmonic surface fairing** (libigl).
+Biharmonic fairing *is* both the cross-section interpolation and the smoothing, so no separate
+volume interpolation or Taubin pass is needed.
+
+**Implicit biharmonic fairing** (Desbrun et al. 1999) minimises the surface bending energy
+while staying anchored to the original vertices. With the cotangent Laplacian `L` and the
+(Voronoi) mass matrix `M`, we solve one sparse system per mesh:
+
+```
+(M + λ · L Mˉ¹ L) x' = M x
+```
+
+`L Mˉ¹ L` is the discrete bilaplacian; minimising `xᵀ(L Mˉ¹ L)x` penalises curvature
+variation, which flattens the section terraces into a fair, smooth surface. The `M x` data
+term keeps the organ from shrinking. We use libigl's **cotangent** Laplacian (geometry-aware,
+so it doesn't distort the irregular triangles left by decimation) and normalise each mesh to
+unit size before solving so a single `λ` works across organs of any scale. Meshes are cleaned
+(merge duplicate vertices, drop degenerate faces) first, or the degenerate cotangents make the
+solve singular; a Taubin fallback covers any residual ill-conditioning.
+
+The everything-below section describes the alternative **shape-based interpolation** approach
+(`--interp-factor`), kept as an option — but note that cubic spline overshoots and shatters
+high-resolution organs, and even linear interpolation leaves residual terracing that the
+biharmonic fairing handles better.
+
 ## Why you can't just spline the labels
 
 The volume is a *label* (index) image: each voxel holds an integer organ id. Interpolating
