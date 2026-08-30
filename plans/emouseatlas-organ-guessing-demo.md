@@ -129,7 +129,13 @@ across stages (consistent IDs from Stage 1). Preload GLBs or lazy-load with a sp
 **Success:** Moving the slider changes the embryo to the correct stage; picking "heart" stays
 "heart" as you scrub.
 **Verify:** manual — step through every stage; confirm organ identity persists and no leaks.
-**Status:** Not Started
+**Status:** ✅ Done — 3-stage slider **TS23 (E15) · TS24 (E16) · TS26 (E18)** (later stages
+share the same EMAPA-labelled organs; TS15–TS20 use a different scheme so were excluded; TS25
+EMA149 was a partial delineation, dropped). Separate **Explore** mode with organ chips +
+deep-link params. Organ identity keyed by EMAPA id across stages. GLBs Draco-compressed
+(~180–350 KB each). Note: my headless test browser hangs on Draco's decoder worker (SwiftShader
+quirk) — Draco data verified valid via `gltf-transform` decode + app verified via plain GLBs;
+**Draco-in-real-browser to be confirmed by user.**
 
 ### Stage 5: Polish & deploy to GitHub Pages
 **Goal:** Presentable, robust, and live on the web.
