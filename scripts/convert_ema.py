@@ -177,7 +177,7 @@ def main() -> int:
                     help="SDF resample order: 1=linear (safe), 3=cubic (can overshoot)")
     ap.add_argument("--smooth-method", choices=("taubin", "biharmonic"), default="biharmonic",
                     help="mesh smoothing: biharmonic surface fairing (libigl) or taubin")
-    ap.add_argument("--lam", type=float, default=0.002,
+    ap.add_argument("--lam", type=float, default=0.0002,
                     help="biharmonic fairing strength on the unit-normalised mesh (larger = smoother)")
     args = ap.parse_args()
 
