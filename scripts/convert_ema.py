@@ -25,14 +25,53 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 import trimesh
+from scipy.ndimage import distance_transform_edt, find_objects, zoom
 from skimage import measure
 
 from ema_labels import parse_labels
 
 
+def detect_section_axis(body: np.ndarray) -> int:
+    """Guess the histological section-stacking axis of a reconstructed volume.
+
+    Serial-section reconstructions terrace along the stacking axis: the boundary is
+    re-drawn per section, so that axis carries far more surface 'step' faces per unit
+    length than the two in-plane axes. Count boundary faces per direction and pick the max.
+    """
+    b = body.astype(np.int8)
+    scores = [np.abs(np.diff(b, axis=a)).sum() / body.shape[a] for a in range(3)]
+    return int(np.argmax(scores))
+
+
+def shape_interpolate(mask: np.ndarray, axis: int, factor: int):
+    """Shape-based (Raya & Udupa 1990) cubic-spline interpolation between sections.
+
+    Labels are categorical, so we cannot spline the label IDs. Instead we turn the binary
+    mask into a *signed distance field* (positive inside, negative outside), cubic-spline
+    upsample that smooth field along the section axis, then re-threshold at 0. This
+    interpolates the organ *boundary* smoothly between sections, removing the terracing.
+
+    Returns (upsampled_mask, spacing) where spacing keeps physical proportions.
+    """
+    if factor <= 1 or mask.shape[axis] < 2:
+        return mask, (1.0, 1.0, 1.0)
+    sdf = (distance_transform_edt(mask) - distance_transform_edt(~mask)).astype(np.float32)
+    factors = [1.0, 1.0, 1.0]
+    factors[axis] = factor
+    # order=3 == cubic spline; only the section axis is upsampled, keeping arrays small
+    sdf_up = zoom(sdf, factors, order=3, mode="nearest")
+    spacing = [1.0, 1.0, 1.0]
+    spacing[axis] = 1.0 / factor                            # so 1 upsampled voxel = 1/factor
+    return sdf_up >= 0.0, tuple(spacing)
+
+
 def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int,
                  max_faces: int) -> trimesh.Trimesh | None:
-    """Marching cubes on a padded binary mask -> smoothed, face-capped trimesh (or None)."""
+    """Marching cubes on a padded binary mask -> smoothed, face-capped trimesh (or None).
+
+    Returns the mesh in crop-local coordinates (origin at the crop corner, in original
+    voxel units regardless of interpolation spacing), ready to translate by the crop `lo`.
+    """
     padded = np.pad(mask, 1)  # closed surfaces at the volume border
     try:
         verts, faces, _normals, _vals = measure.marching_cubes(
@@ -42,6 +81,7 @@ def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int,
         return None
     if len(faces) == 0:
         return None
+    verts = verts - np.asarray(spacing)   # undo the 1-voxel pad, in physical units
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
     # Decimate FIRST (cheap), then smooth the light mesh — smoothing a 200k-face raw
     # marching-cubes mesh is far too slow, and the result is visually the same.
@@ -66,6 +106,10 @@ def main() -> int:
     ap.add_argument("--smooth", type=int, default=5, help="Taubin smoothing iterations")
     ap.add_argument("--max-faces", type=int, default=20000,
                     help="decimate any organ above this many faces (0 = no cap)")
+    ap.add_argument("--interp-factor", type=int, default=0,
+                    help="shape-based cubic-spline upsampling between sections (0/1 = off)")
+    ap.add_argument("--interp-axis", type=int, default=-1,
+                    help="section-stacking axis (-1 = auto-detect)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -81,35 +125,43 @@ def main() -> int:
     spacing = tuple(float(z) for z in zooms) if all(zooms) else (1.0, 1.0, 1.0)
     print(f"volume shape={vol.shape} dtype={vol.dtype} spacing={spacing}", flush=True)
 
+    section_axis = -1
+    if args.interp_factor > 1:
+        section_axis = args.interp_axis if args.interp_axis >= 0 else detect_section_axis(vol > 0)
+        print(f"shape-based interpolation: axis={section_axis} factor={args.interp_factor}", flush=True)
+
     scene = trimesh.Scene()
     manifest = []
     t0 = time.time()
 
-    present = np.unique(vol)
+    # one pass gives every label's bounding box, avoiding a full-volume scan per organ
+    bboxes = find_objects(vol)
     for idx in sorted(labels):
-        if idx not in present:
+        sl = bboxes[idx - 1] if 0 < idx <= len(bboxes) else None
+        if sl is None:
             continue
         lab = labels[idx]
         emapa_num = int(lab.emapa.split(":")[1]) if lab.emapa else -1
         if only is not None and emapa_num not in only:
             continue
 
-        mask_full = vol == idx
-        n_vox = int(mask_full.sum())
+        # crop to the label's bounding box, then build the binary mask on the small region
+        sub = vol[sl] == idx
+        n_vox = int(sub.sum())
         if n_vox < args.min_voxels:
             continue
+        lo = np.array([s.start for s in sl])
 
-        # crop to bounding box for speed
-        coords = np.argwhere(mask_full)
-        lo = coords.min(0)
-        hi = coords.max(0) + 1
-        sub = mask_full[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]]
-
-        mesh = extract_mesh(sub, spacing, args.step, args.smooth, args.max_faces)
+        if section_axis >= 0:
+            # interpolate boundary between sections, then mesh at step=1 for the fine detail
+            sub, spc = shape_interpolate(sub, section_axis, args.interp_factor)
+            mesh = extract_mesh(sub, spc, 1, args.smooth, args.max_faces)
+        else:
+            mesh = extract_mesh(sub, spacing, args.step, args.smooth, args.max_faces)
         if mesh is None or len(mesh.faces) == 0:
             continue
-        # shift back into the shared model frame (account for pad of 1)
-        mesh.apply_translation((np.array(lo) - 1) * np.array(spacing))
+        # shift the crop back into the shared model frame (original voxel units)
+        mesh.apply_translation(np.asarray(lo, dtype=float))
 
         r, g, b = lab.rgb
         mesh.visual.face_colors = [r, g, b, 255]

@@ -18,6 +18,10 @@ Two layers:
 2. **The website (JavaScript / Three.js):** `docs/` is a static site (no build step) that
    loads the GLB and runs the quiz. Served by GitHub Pages from the `docs/` folder.
 
+The mesh reconstruction — including the **cubic-spline shape-based interpolation between
+histological sections** that removes the "sliced" terracing — is documented in
+[`METHODS.md`](METHODS.md).
+
 ## Run locally
 
 ```bash

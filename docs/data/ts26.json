@@ -1,7 +1,7 @@
 {
   "stage": "TS26",
   "n_organs": 20,
-  "total_faces": 346652,
+  "total_faces": 439626,
   "organs": [
     {
       "organ_id": "EMAPA:16688",
@@ -25,7 +25,7 @@
         128
       ],
       "voxels": 3577,
-      "faces": 1080
+      "faces": 21628
     },
     {
       "organ_id": "EMAPA:17701",
@@ -49,7 +49,7 @@
         135
       ],
       "voxels": 40254,
-      "faces": 15270
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:16895",
@@ -73,7 +73,7 @@
         92
       ],
       "voxels": 946373,
-      "faces": 21999
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:16916",
@@ -85,7 +85,7 @@
         139
       ],
       "voxels": 257027,
-      "faces": 21999
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:19106",
@@ -97,7 +97,7 @@
         112
       ],
       "voxels": 47866,
-      "faces": 10888
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:17838",
@@ -109,7 +109,7 @@
         255
       ],
       "voxels": 95284,
-      "faces": 10224
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:16846",
@@ -121,7 +121,7 @@
         128
       ],
       "voxels": 639897,
-      "faces": 22000
+      "faces": 21998
     },
     {
       "organ_id": "EMAPA:16728",
@@ -169,7 +169,7 @@
         170
       ],
       "voxels": 45817,
-      "faces": 12328
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:18010",
@@ -181,7 +181,7 @@
         128
       ],
       "voxels": 103488,
-      "faces": 20338
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:17577",
@@ -193,7 +193,7 @@
         208
       ],
       "voxels": 106099,
-      "faces": 21999
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:18767",
@@ -205,7 +205,7 @@
         133
       ],
       "voxels": 9022,
-      "faces": 1060
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:17021",
@@ -217,7 +217,7 @@
         154
       ],
       "voxels": 52641,
-      "faces": 17904
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:18768",
@@ -229,7 +229,7 @@
         30
       ],
       "voxels": 30662,
-      "faces": 15564
+      "faces": 22000
     },
     {
       "organ_id": "EMAPA:17185",
@@ -241,7 +241,7 @@
         255
       ],
       "voxels": 75579,
-      "faces": 21999
+      "faces": 22000
     }
   ]
 }
