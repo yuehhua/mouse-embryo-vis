@@ -4,9 +4,8 @@
 __pycache__/
 *.pyc
 
-# Large raw source data (downloaded from eMouseAtlas DataShare) and build scratch
-data/ema/raw/
-data/ema/processed/
+# Raw source data + all offline build scratch (deployed copies live in docs/data/)
+data/
 node_modules/
 
 # OS / editor cruft

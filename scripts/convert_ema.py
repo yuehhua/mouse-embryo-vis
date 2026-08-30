@@ -43,11 +43,13 @@ def extract_mesh(mask: np.ndarray, spacing, step: int, smooth: int,
     if len(faces) == 0:
         return None
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
+    # Decimate FIRST (cheap), then smooth the light mesh — smoothing a 200k-face raw
+    # marching-cubes mesh is far too slow, and the result is visually the same.
+    if max_faces > 0 and len(mesh.faces) > max_faces:
+        mesh = mesh.simplify_quadric_decimation(face_count=max_faces)
     if smooth > 0:
         # Taubin smoothing keeps volume better than plain Laplacian; pure-python, no deps.
         trimesh.smoothing.filter_taubin(mesh, iterations=smooth)
-    if max_faces > 0 and len(mesh.faces) > max_faces:
-        mesh = mesh.simplify_quadric_decimation(face_count=max_faces)
     return mesh
 
 

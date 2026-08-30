@@ -93,10 +93,9 @@ project-local paths so no build/cache bytes land on `/home`.
 **Success:** `ts26.glb` + `ts26.json` exist; a quick viewer shows ≥6 named organs as distinct
 meshes. (Then repeat for the other stages.)
 **Verify:** open the GLB in an online glTF viewer; count and name the separable organs.
-**Status:** In Progress — TS26 raw surfaces + label map downloaded; NIfTI + conversion next.
-
-> If Stage 1 stalls after 3 real attempts at conversion, STOP and reassess: switch primary
-> stage (TS20), or proceed UI-first on placeholder meshes while the EMAP request is pending.
+**Status:** ✅ Complete for TS26 — NIfTI + marching-cubes route works; `docs/data/ts26.glb`
+(20 curated organs, 324k faces, 6.5 MB) + `ts26.json` produced. Other stages for the slider
+still to do.
 
 ### Stage 2: 3D viewer skeleton
 **Goal:** Load and orbit the embryo in the browser.
@@ -105,7 +104,9 @@ driven by `organs.json`; hover → highlight organ; basic lighting/background.
 **Success:** All organs render; hovering highlights the organ under the cursor; smooth on a
 laptop iGPU.
 **Verify:** manual — rotate, zoom, hover each organ; check 60fps-ish.
-**Status:** Not Started
+**Status:** ✅ Complete — no-build static Three.js app (`docs/`, CDN import-map, no Vite
+needed). Loads GLB, orbits, auto-rotates. Note: per-organ material must be **cloned** (GLTF
+shares one material instance) or highlight edits leak across organs.
 
 ### Stage 3: Quiz game logic
 **Goal:** The actual "guess the organ" loop.
@@ -116,7 +117,9 @@ score screen with "Play again". Small state machine (`intro → question → rev
 **Success:** A full round is playable start to finish; score is correct; distractors never
 include the answer twice.
 **Verify:** play 3 rounds; deliberately answer wrong/right; confirm scoring and reveal text.
-**Status:** Not Started
+**Status:** ✅ Complete — 10-organ rounds, 4 multiple-choice, target organ glows *through* the
+faint grey ghost embryo (target uses `depthTest=false` + high `renderOrder`), reveal + fact,
+score, summary, play-again. Facts written for all 20 organs.
 
 ### Stage 4: Developmental time slider
 **Goal:** Scrub across stages to watch the same organs appear/grow.
@@ -138,7 +141,11 @@ live URL on a fresh browser and on the demo laptop.
 **Success:** The public Pages URL loads, plays a full round, and the slider works — with no
 console/network errors.
 **Verify:** open the live URL in an incognito window; a colleague plays it without help.
-**Status:** Not Started
+**Status:** 🟡 Deployed — **live at https://yuehhua.github.io/mouse-embryo-vis/** (repo
+`yuehhua/mouse-embryo-vis`, Pages from `main` `/docs`, `.nojekyll`, relative paths so the
+`/mouse-embryo-vis/` subpath works with no base config). Remaining polish: bigger
+projector-friendly UI, intro screen, Draco compression of the GLB. Slider (Stage 4) still
+pending other stages.
 
 ---
 

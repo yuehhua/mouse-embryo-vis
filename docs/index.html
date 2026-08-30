@@ -5,68 +5,121 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Guess the Organ — Mouse Embryo (eMouseAtlas)</title>
 <style>
-  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --accent:#4493f8; }
+  :root {
+    --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e9eef5; --muted:#9da7b3;
+    --accent:#4493f8; --accent2:#1a7f37;
+    --fs: clamp(15px, 1.05vw, 19px);   /* projector-friendly base font */
+  }
   * { box-sizing: border-box; }
   html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overflow:hidden; }
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: var(--fs); overflow:hidden; }
   #app { display:flex; height:100%; }
-  #view { flex:1; position:relative; }
+  #view { flex:1; position:relative; min-width:0; }
   canvas { display:block; }
-  #panel { width:340px; background:var(--panel); border-left:1px solid var(--line);
-    padding:20px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; }
-  h1 { font-size:18px; margin:0; line-height:1.3; }
-  .sub { font-size:12px; color:#9da7b3; margin-top:-6px; }
-  .score { font-size:14px; color:#9da7b3; }
-  .score b { color:var(--fg); font-size:22px; }
-  #question { font-size:15px; font-weight:600; min-height:20px; }
-  .choices { display:flex; flex-direction:column; gap:8px; }
-  button.choice { text-align:left; padding:11px 13px; border-radius:8px; cursor:pointer;
-    border:1px solid var(--line); background:#1f2630; color:var(--fg); font-size:14px;
+  #panel { width:clamp(340px, 27vw, 460px); background:var(--panel);
+    border-left:1px solid var(--line); padding:22px 22px 16px;
+    display:flex; flex-direction:column; gap:16px; overflow-y:auto; }
+
+  h1 { font-size:1.5em; margin:0; line-height:1.2; letter-spacing:.2px; }
+  .sub { font-size:.8em; color:var(--muted); margin-top:4px; line-height:1.4; }
+
+  .tabs { display:flex; gap:8px; }
+  .tab { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
+    background:#1f2630; color:var(--fg); font-size:1em; font-weight:600; cursor:pointer; }
+  .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .score { font-size:.95em; color:var(--muted); }
+  .score b { color:var(--fg); font-size:1.7em; }
+
+  #question { font-size:1.15em; font-weight:700; line-height:1.35; min-height:1.4em; }
+  .choices { display:flex; flex-direction:column; gap:10px; }
+  button.choice { text-align:left; padding:15px 16px; border-radius:11px; cursor:pointer;
+    border:1.5px solid var(--line); background:#1f2630; color:var(--fg); font-size:1.05em;
     transition: background .12s, border-color .12s; }
-  button.choice:hover:not(:disabled) { border-color:var(--accent); background:#232c38; }
-  button.choice:disabled { cursor:default; opacity:.95; }
+  button.choice:hover:not(:disabled) { border-color:var(--accent); background:#243040; }
+  button.choice:disabled { cursor:default; }
   button.choice.correct { background:#1a7f37; border-color:#2ea043; color:#fff; }
   button.choice.wrong { background:#a4243b; border-color:#da3633; color:#fff; }
-  #reveal { font-size:13px; color:#c9d3de; line-height:1.5; min-height:40px; }
-  #reveal .name { color:#fff; font-weight:700; font-size:15px; }
-  #next, #restart { padding:11px; border-radius:8px; border:none; cursor:pointer;
-    background:var(--accent); color:#fff; font-size:14px; font-weight:600; }
+
+  #reveal { font-size:.92em; color:#cbd5e1; line-height:1.55; min-height:2.6em; }
+  #reveal .name { color:#fff; font-weight:700; font-size:1.15em; }
+
+  .bigbtn { padding:15px; border-radius:11px; border:none; cursor:pointer;
+    background:var(--accent); color:#fff; font-size:1.05em; font-weight:700; }
   #next[hidden] { display:none; }
-  .hint { font-size:11px; color:#6e7681; margin-top:auto; line-height:1.5; }
-  .hint a { color:#6e7681; }
+
+  /* Explore mode */
+  .stagebar { display:flex; flex-direction:column; gap:8px; }
+  .stagebar .row { display:flex; justify-content:space-between; align-items:baseline; }
+  .stagebar .now { font-size:1.15em; font-weight:700; }
+  .stagebar .age { color:var(--muted); font-size:.85em; }
+  input[type=range] { width:100%; accent-color:var(--accent); height:26px; }
+  .ticks { display:flex; justify-content:space-between; font-size:.72em; color:var(--muted); }
+  .organgrid { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:20px;
+    border:1.5px solid var(--line); background:#1b222c; color:var(--fg); font-size:.9em;
+    cursor:pointer; }
+  .chip:hover { border-color:var(--accent); }
+  .chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip .dot { width:12px; height:12px; border-radius:50%; flex:none; }
+  #exReveal { font-size:.92em; color:#cbd5e1; line-height:1.55; min-height:2.6em; }
+  #exReveal .name { color:#fff; font-weight:700; font-size:1.1em; }
+
+  .hide { display:none !important; }
+  .hint { font-size:.72em; color:#6e7681; margin-top:auto; line-height:1.6; }
   #loading { position:absolute; inset:0; display:flex; align-items:center;
-    justify-content:center; font-size:14px; color:#9da7b3; }
-  #summary { display:none; flex-direction:column; gap:12px; }
-  #summary.show { display:flex; }
-  .quiz.hide { display:none; }
-  .quiz { display:flex; flex-direction:column; gap:14px; }
+    justify-content:center; font-size:1.05em; color:var(--muted); text-align:center; padding:20px; }
+  .modelabel { position:absolute; left:16px; top:14px; font-size:.85em; color:var(--muted);
+    background:rgba(13,17,23,.6); padding:6px 12px; border-radius:8px; pointer-events:none; }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="view"><div id="loading">Loading mouse embryo…</div></div>
+  <div id="view">
+    <div class="modelabel" id="modelabel"></div>
+    <div id="loading">Loading mouse embryo models…</div>
+  </div>
+
   <aside id="panel">
     <div>
       <h1>Guess the Organ</h1>
-      <div class="sub">Mouse embryo · Theiler Stage 26 (~E18) · eMouseAtlas EMA102</div>
+      <div class="sub">Mouse embryo · eMouseAtlas 3D anatomy · drag to rotate, scroll to zoom</div>
     </div>
-    <div class="score">Score <b id="score">0</b> / <span id="total">0</span></div>
 
-    <div class="quiz" id="quiz">
-      <div id="question">Rotate the embryo, then name the highlighted organ.</div>
+    <div class="tabs">
+      <button class="tab active" id="tabQuiz">🎯 Quiz</button>
+      <button class="tab" id="tabExplore">🔬 Explore</button>
+    </div>
+
+    <!-- QUIZ -->
+    <section id="quizPane" class="pane">
+      <div class="score">Score <b id="score">0</b> / <span id="total">10</span></div>
+      <div id="question">Name the highlighted organ.</div>
       <div class="choices" id="choices"></div>
       <div id="reveal"></div>
-      <button id="next" hidden>Next organ →</button>
-    </div>
+      <button id="next" class="bigbtn" hidden>Next organ →</button>
+      <div id="summary" class="hide">
+        <div id="summaryText"></div>
+        <button id="restart" class="bigbtn" style="margin-top:12px;">Play again</button>
+      </div>
+    </section>
 
-    <div id="summary">
-      <div id="summaryText"></div>
-      <button id="restart">Play again</button>
-    </div>
+    <!-- EXPLORE -->
+    <section id="explorePane" class="pane hide">
+      <div class="stagebar">
+        <div class="row"><span class="now" id="stageNow">TS26</span><span class="age" id="stageAge">E18 · ~day 18</span></div>
+        <input type="range" id="stageSlider" min="0" max="2" step="1" value="2" />
+        <div class="ticks" id="stageTicks"></div>
+      </div>
+      <div class="sub">Tap an organ to spotlight it, then slide through time to watch it change.</div>
+      <div class="organgrid" id="organGrid"></div>
+      <div id="exReveal"></div>
+    </section>
 
     <div class="hint">
-      Drag to rotate · scroll to zoom · right-drag to pan.<br />
-      Data: eMouseAtlas / EMAP (CC-BY). Richardson L et al., <i>Nucleic Acids Res</i> 2014.
+      Data: eMouseAtlas / EMAP (CC-BY). Richardson L et al., <i>Nucleic Acids Res</i> 2014.<br />
+      Stages: TS23 (E15) · TS24 (E16) · TS26 (E18).
     </div>
   </aside>
 </div>
