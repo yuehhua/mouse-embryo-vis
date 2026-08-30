@@ -133,9 +133,9 @@ across stages (consistent IDs from Stage 1). Preload GLBs or lazy-load with a sp
 share the same EMAPA-labelled organs; TS15–TS20 use a different scheme so were excluded; TS25
 EMA149 was a partial delineation, dropped). Separate **Explore** mode with organ chips +
 deep-link params. Organ identity keyed by EMAPA id across stages. GLBs Draco-compressed
-(~180–350 KB each). Note: my headless test browser hangs on Draco's decoder worker (SwiftShader
-quirk) — Draco data verified valid via `gltf-transform` decode + app verified via plain GLBs;
-**Draco-in-real-browser to be confirmed by user.**
+(~180–350 KB each, 884 KB total). **Draco confirmed working in the user's real browser.**
+(My headless test browser hangs on Draco's decoder worker — a SwiftShader quirk — so app
+rendering was verified via plain GLBs and Draco validity via `gltf-transform` decode.)
 
 ### Stage 5: Polish & deploy to GitHub Pages
 **Goal:** Presentable, robust, and live on the web.
