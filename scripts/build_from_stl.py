@@ -22,9 +22,28 @@ import igl
 import numpy as np
 import trimesh
 
-from convert_ema import biharmonic_fair
+from convert_ema import (_stage_frame, biharmonic_fair, body_alignment,
+                         scene_world_vertices)
 from ema_labels import parse_labels
 from resection import reconstruct_from_mesh, slice_component_count
+
+
+# Per-organ mesh policy (reviewed with the user organ-by-organ). Slice-count alone is a bad
+# proxy: the rib has the MOST slice-components (148) yet must stay separate, while the thymus
+# and spleen have few (5-6) yet read best merged into one bulk. Values:
+#   "raw"    - keep the raw STL slice-stack; no resection, no fairing. For organs where merging
+#              sections gets the anatomy wrong (ribs must remain individual, not a fused shell).
+#   "resect" - reconstruct into one continuous solid AND lightly fair it (bulk organs).
+#   "rough"  - reconstruct into one continuous solid but skip fairing, keeping more surface
+#              detail (for organs the fairing over-smooths, e.g. the diaphragm).
+# Organs not listed use the automatic rule: resect (with fairing) when the number of
+# slice-components >= --resection-min-slices, else keep raw STL.
+ORGAN_POLICY = {
+    "EMAPA:18010": "raw",     # rib — keep individual ribs; merging fuses them into a wrong shell
+    "EMAPA:17701": "rough",   # diaphragm — continuous but fairing over-smooths it
+    "EMAPA:18768": "resect",  # thymus — merge sections into one bulk organ
+    "EMAPA:18767": "resect",  # spleen — merge sections into one bulk organ
+}
 
 
 def densify_biharmonic(mesh: trimesh.Trimesh, upsample: int, lam: float) -> trimesh.Trimesh:
@@ -58,6 +77,8 @@ def main() -> int:
     ap.add_argument("--resection-min-slices", type=int, default=8,
                     help="reconstruct organs with at least this many slice-components")
     ap.add_argument("--pitch", type=float, default=1.0, help="voxelisation pitch for resection")
+    ap.add_argument("--align-to", default="",
+                    help="reference stage GLB; rotate the whole scene onto its body frame")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -77,17 +98,25 @@ def main() -> int:
         if lab is None:
             continue
         mesh = trimesh.load(stl, process=True)
+        # decide resection & fairing from the per-organ policy (fall back to the auto rule)
+        policy = ORGAN_POLICY.get(emapa)
+        if policy is None:
+            policy = "resect" if (args.resection
+                                  and slice_component_count(mesh) >= args.resection_min_slices) else "raw"
+        do_resect = args.resection and policy in ("resect", "rough")
+        do_fair = args.lam > 0 and policy != "raw" and policy != "rough"
+
         note = "STL"
-        if args.resection and slice_component_count(mesh) >= args.resection_min_slices:
+        if do_resect:
             # organ is a stack of disconnected slice-meshes -> interpolate between sections
             # (fair AFTER decimation, never on the full ~1M-face reconstruction)
             mesh = reconstruct_from_mesh(mesh, args.pitch, 0.0)
-            note = "resection"
-        elif args.densify:
+            note = "resection" if policy != "rough" else "resection(rough)"
+        elif args.densify and policy != "raw":
             mesh = densify_biharmonic(mesh, args.densify, 0.0)
         if args.max_faces and len(mesh.faces) > args.max_faces:
             mesh = mesh.simplify_quadric_decimation(face_count=args.max_faces)
-        if args.lam > 0:
+        if do_fair:
             mesh = biharmonic_fair(mesh, args.lam)   # light fairing on the decimated mesh
         r, g, b = lab.rgb
         mesh.visual.face_colors = [r, g, b, 255]
@@ -105,6 +134,17 @@ def main() -> int:
     if not manifest:
         print("no STL surfaces matched labels")
         return 1
+
+    if args.align_to:
+        # Keep every stage in one shared frame so the slider doesn't spin/flip the embryo.
+        ref_axes, _rm, ref_ht = _stage_frame(args.align_to)
+        cur_axes, _cm, cur_ht = _stage_frame(scene_world_vertices(scene))
+        R = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+        T = np.eye(4)
+        T[:3, :3] = R
+        scene.apply_transform(T)
+        print(f"aligned to {args.align_to}: body long axis -> {np.round(R @ cur_axes[0], 2)} "
+              f"(reference {np.round(ref_axes[0], 2)})", flush=True)
 
     scene.rezero()   # centre; the web app scales each stage to a common view height
     glb = out_dir / f"{args.stage.lower()}.glb"

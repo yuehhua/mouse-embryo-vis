@@ -30,7 +30,7 @@ import igl
 import nibabel as nib
 import numpy as np
 import trimesh
-from scipy.ndimage import distance_transform_edt, find_objects, zoom
+from scipy.ndimage import distance_transform_edt, find_objects, label as cc_label, zoom
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 from skimage import measure
@@ -86,6 +86,71 @@ def biharmonic_fair(mesh: trimesh.Trimesh, lam: float) -> trimesh.Trimesh:
         return _taubin_fallback()
     Vnew = np.asarray(Vn_new) * scale + centre
     return trimesh.Trimesh(vertices=Vnew, faces=F, process=False)
+
+
+def drop_small_components(mask: np.ndarray, min_voxels: int) -> tuple[np.ndarray, int]:
+    """Remove stray label-noise islands below min_voxels, keeping every real component.
+
+    Paired/lobed organs (lenses, lungs, kidneys) are legitimately multipart, so we must NOT
+    keep only the largest component — but 1-4 voxel specks far from the organ inflate its
+    bounding box and float as debris after marching cubes.
+    """
+    if min_voxels <= 0:
+        return mask, int(mask.sum())
+    labels, n = cc_label(mask)
+    if n <= 1:
+        return mask, int(mask.sum())
+    sizes = np.bincount(labels.ravel())
+    keep = np.zeros(sizes.size, dtype=bool)
+    keep[1:] = sizes[1:] >= min_voxels
+    out = keep[labels]
+    return out, int(out.sum())
+
+
+def _stage_frame(worlds: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Body frame from world-space vertices per organ: (PCA axes as rows, mean, head-tail)."""
+    V = np.vstack([w[::7] for w in worlds.values()])
+    axes = np.linalg.svd(V - V.mean(0), full_matrices=False)[2]
+    head = np.mean([worlds[n].mean(0) for n in ("EMAPA16974", "EMAPA17185", "EMAPA17838")
+                    if n in worlds], axis=0)
+    tail = np.mean([worlds[n].mean(0) for n in ("EMAPA17373", "EMAPA18321") if n in worlds], axis=0)
+    axes[0] *= np.sign((head - tail) @ axes[0]) or 1.0   # head at +
+    return axes, V.mean(0), head - tail
+
+
+def stage_frame(glb_path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Body frame of a previously built stage GLB (world-space node transforms applied)."""
+    scene = trimesh.load(glb_path, process=False)
+    worlds = {name: trimesh.transform_points(np.asarray(geom.vertices),
+                                             scene.graph.get(frame_to=name)[0])
+              for name, geom in scene.geometry.items()}
+    return _stage_frame(worlds)
+
+
+def scene_world_vertices(scene: trimesh.Scene) -> dict[str, np.ndarray]:
+    """World-space vertices per named geometry of an in-memory scene."""
+    return {name: trimesh.transform_points(np.asarray(geom.vertices),
+                                           scene.graph.get(frame_to=name)[0])
+            for name, geom in scene.geometry.items()}
+
+
+def body_alignment(cur_axes, cur_headtail, ref_axes, ref_headtail) -> np.ndarray:
+    """Rotation mapping one stage's body frame onto another's (long axis, head-positive).
+
+    Organ-centroid Kabsch is hopeless here: the embryos curl differently between stages, so
+    the centroid clouds are not congruent. Body-level PCA axes are stable, and the long-axis
+    sign is fixed with the head-tail markers. A reflection (left-right mirror) cannot be
+    removed by a rotation, so if det<0 the least-significant axis is flipped to keep it proper.
+    """
+    A = ref_axes.T @ cur_axes
+    if np.linalg.det(A) < 0:
+        cur_axes = cur_axes.copy()
+        cur_axes[2] *= -1
+        A = ref_axes.T @ cur_axes
+    if (cur_headtail @ cur_axes[0]) * (ref_headtail @ ref_axes[0]) < 0:
+        # shouldn't happen: both frames are head-positive by construction
+        A = np.diag([1.0, 1.0, -1.0]) @ A
+    return A
 
 
 def detect_section_axis(body: np.ndarray) -> int:
@@ -163,7 +228,13 @@ def main() -> int:
     ap.add_argument("--out", default="data/ema/processed")
     ap.add_argument("--only", default="", help="comma-separated EMAPA numbers to include")
     ap.add_argument("--min-voxels", type=int, default=200,
-                    help="skip components smaller than this many voxels")
+                    help="skip organs with fewer total voxels than this")
+    ap.add_argument("--min-component", type=int, default=0,
+                    help="drop disconnected label islands below this many voxels "
+                         "(stray delineation specks; keeps paired organs intact)")
+    ap.add_argument("--align-to", default="",
+                    help="reference stage GLB; rigidly align organ centroids onto it so "
+                         "volume-built stages share the STL stages' coordinate frame")
     ap.add_argument("--step", type=int, default=2, help="marching_cubes step_size (>=1)")
     ap.add_argument("--smooth", type=int, default=5, help="Taubin smoothing iterations")
     ap.add_argument("--max-faces", type=int, default=60000,
@@ -216,7 +287,7 @@ def main() -> int:
 
         # crop to the label's bounding box, then build the binary mask on the small region
         sub = vol[sl] == idx
-        n_vox = int(sub.sum())
+        sub, n_vox = drop_small_components(sub, args.min_component)
         if n_vox < args.min_voxels:
             continue
         lo = np.array([s.start for s in sl])
@@ -256,6 +327,21 @@ def main() -> int:
     if not manifest:
         print("no meshes produced", flush=True)
         return 1
+
+    if args.align_to:
+        # The anatomy volumes and the STL surfaces use different coordinate frames, so a
+        # volume-built stage would appear rotated relative to the others in the app's fixed
+        # camera (e.g. viewed down the body axis, where the curled neural tube fills the
+        # view). Align the body frame onto a reference stage built from STL.
+        ref_axes, _ref_mean, ref_ht = stage_frame(args.align_to)
+        cur_axes, _cur_mean, cur_ht = _stage_frame(scene_world_vertices(scene))
+        R = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+        T = np.eye(4)
+        T[:3, :3] = R
+        scene.apply_transform(T)
+        print(f"aligned to {args.align_to}: body long axis -> "
+              f"{np.round(R @ cur_axes[0], 2)} (reference head axis {np.round(ref_axes[0], 2)})",
+              flush=True)
 
     # center + normalize the whole scene so the app camera is stage-agnostic
     scene.rezero()
