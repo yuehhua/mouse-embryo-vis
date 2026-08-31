@@ -14,21 +14,19 @@ import sys
 import numpy as np
 import trimesh
 
-from convert_ema import _stage_frame, body_alignment, scene_world_vertices, stage_frame
+from convert_ema import align_frames, scene_world_vertices, stage_world_vertices
 
 
 def main() -> int:
     src, ref, out = sys.argv[1], sys.argv[2], sys.argv[3]
-    ref_axes, _rm, ref_ht = stage_frame(ref)
     scene = trimesh.load(src, process=False)
-    cur_axes, _cm, cur_ht = _stage_frame(scene_world_vertices(scene))
-    R = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+    R, note = align_frames(scene_world_vertices(scene), stage_world_vertices(ref))
     T = np.eye(4)
     T[:3, :3] = R
     scene.apply_transform(T)
     scene.rezero()
     scene.export(out)
-    print(f"{src} -> {out}: long axis {np.round(R @ cur_axes[0], 2)} onto {np.round(ref_axes[0], 2)}")
+    print(f"{src} -> {out}: {note}")
     return 0
 
 

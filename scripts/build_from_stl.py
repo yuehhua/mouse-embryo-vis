@@ -22,8 +22,8 @@ import igl
 import numpy as np
 import trimesh
 
-from convert_ema import (_stage_frame, biharmonic_fair, body_alignment,
-                         scene_world_vertices)
+from convert_ema import align_frames, biharmonic_fair, scene_world_vertices, \
+    stage_world_vertices
 from ema_labels import parse_labels
 from resection import reconstruct_from_mesh, slice_component_count
 
@@ -137,14 +137,12 @@ def main() -> int:
 
     if args.align_to:
         # Keep every stage in one shared frame so the slider doesn't spin/flip the embryo.
-        ref_axes, _rm, ref_ht = _stage_frame(args.align_to)
-        cur_axes, _cm, cur_ht = _stage_frame(scene_world_vertices(scene))
-        R = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+        R, note = align_frames(scene_world_vertices(scene),
+                               stage_world_vertices(args.align_to))
         T = np.eye(4)
         T[:3, :3] = R
         scene.apply_transform(T)
-        print(f"aligned to {args.align_to}: body long axis -> {np.round(R @ cur_axes[0], 2)} "
-              f"(reference {np.round(ref_axes[0], 2)})", flush=True)
+        print(f"aligned to {args.align_to}: {note}", flush=True)
 
     scene.rezero()   # centre; the web app scales each stage to a common view height
     glb = out_dir / f"{args.stage.lower()}.glb"

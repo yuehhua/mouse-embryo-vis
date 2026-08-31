@@ -134,6 +134,11 @@ def scene_world_vertices(scene: trimesh.Scene) -> dict[str, np.ndarray]:
             for name, geom in scene.geometry.items()}
 
 
+def stage_world_vertices(glb_path: str) -> dict[str, np.ndarray]:
+    """World-space vertices per named geometry of a previously built stage GLB."""
+    return scene_world_vertices(trimesh.load(glb_path, process=False))
+
+
 def body_alignment(cur_axes, cur_headtail, ref_axes, ref_headtail) -> np.ndarray:
     """Rotation mapping one stage's body frame onto another's (long axis, head-positive).
 
@@ -151,6 +156,55 @@ def body_alignment(cur_axes, cur_headtail, ref_axes, ref_headtail) -> np.ndarray
         # shouldn't happen: both frames are head-positive by construction
         A = np.diag([1.0, 1.0, -1.0]) @ A
     return A
+
+
+def _rotation_about(axis: np.ndarray, theta: float) -> np.ndarray:
+    """Rodrigues rotation matrix about a unit axis by theta radians."""
+    c, s = np.cos(theta), np.sin(theta)
+    K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+    return np.eye(3) * c + s * K + (1 - c) * np.outer(axis, axis)
+
+
+def align_frames(cur_worlds: dict[str, np.ndarray], ref_worlds: dict[str, np.ndarray],
+                 min_verts: int = 2000) -> tuple[np.ndarray, str]:
+    """Rigid rotation putting one stage's organs onto a reference stage's (best effort).
+
+    The body long axis + head direction come from PCA + head/tail markers (stable across
+    stages), but the embryo cross-section is nearly round, so the PCA roll about the long
+    axis is arbitrary — organs end up rotated around the body relative to the reference and
+    the slider looks like the organs 'drift'. The roll is the one well-conditioned degree of
+    freedom left, so we fix it by minimising the distance of well-delineated shared organs
+    (>= min_verts in BOTH stages — fragmentary labels like a volume-stage rib/femur are
+    noise and would wreck the fit).
+    """
+    cur_axes, _cm, cur_ht = _stage_frame(cur_worlds)
+    ref_axes, _rm, ref_ht = _stage_frame(ref_worlds)
+    R0 = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+
+    shared = [n for n in cur_worlds if n in ref_worlds
+              and min(len(cur_worlds[n]), len(ref_worlds[n])) >= min_verts]
+    if len(shared) < 3:
+        return R0, f"long-axis only ({len(shared)} robust shared organs; roll left to PCA)"
+
+    axis = ref_axes[0]                                   # roll about the reference long axis
+    cur = np.array([cur_worlds[n].mean(0) for n in shared])
+    ref = np.array([ref_worlds[n].mean(0) for n in shared])
+    cur = (R0 @ cur.T).T
+    cur -= cur.mean(0)
+    ref -= ref.mean(0)
+
+    def cost(theta: float) -> float:
+        Rz = _rotation_about(axis, theta)
+        return float(np.linalg.norm((Rz @ cur.T).T - ref, axis=1).sum())
+
+    coarse = np.deg2rad(np.arange(0.0, 360.0, 2.0))
+    best = coarse[int(np.argmin([cost(t) for t in coarse]))]
+    fine = best + np.deg2rad(np.arange(-2.0, 2.0, 0.05))
+    best = fine[int(np.argmin([cost(t) for t in fine]))]
+    R = _rotation_about(axis, best) @ R0
+    before, after = cost(0.0), cost(best)
+    return R, (f"roll {np.rad2deg(best):.0f} deg over {len(shared)} robust organs; "
+               f"organ spread {before:.0f} -> {after:.0f} (reference units)")
 
 
 def detect_section_axis(body: np.ndarray) -> int:
@@ -333,15 +387,12 @@ def main() -> int:
         # volume-built stage would appear rotated relative to the others in the app's fixed
         # camera (e.g. viewed down the body axis, where the curled neural tube fills the
         # view). Align the body frame onto a reference stage built from STL.
-        ref_axes, _ref_mean, ref_ht = stage_frame(args.align_to)
-        cur_axes, _cur_mean, cur_ht = _stage_frame(scene_world_vertices(scene))
-        R = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
+        ref_worlds = stage_world_vertices(args.align_to)
+        R, note = align_frames(scene_world_vertices(scene), ref_worlds)
         T = np.eye(4)
         T[:3, :3] = R
         scene.apply_transform(T)
-        print(f"aligned to {args.align_to}: body long axis -> "
-              f"{np.round(R @ cur_axes[0], 2)} (reference head axis {np.round(ref_axes[0], 2)})",
-              flush=True)
+        print(f"aligned to {args.align_to}: {note}", flush=True)
 
     # center + normalize the whole scene so the app camera is stage-agnostic
     scene.rezero()
