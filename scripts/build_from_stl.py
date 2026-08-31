@@ -24,6 +24,7 @@ import trimesh
 
 from convert_ema import biharmonic_fair
 from ema_labels import parse_labels
+from resection import reconstruct_from_mesh, slice_component_count
 
 
 def densify_biharmonic(mesh: trimesh.Trimesh, upsample: int, lam: float) -> trimesh.Trimesh:
@@ -52,6 +53,11 @@ def main() -> int:
                     help="igl.upsample subdivision iterations before biharmonic fairing")
     ap.add_argument("--lam", type=float, default=0.0,
                     help="biharmonic fairing strength (0 = off)")
+    ap.add_argument("--resection", action="store_true",
+                    help="reconstruct sliced organs into continuous meshes (section interp)")
+    ap.add_argument("--resection-min-slices", type=int, default=8,
+                    help="reconstruct organs with at least this many slice-components")
+    ap.add_argument("--pitch", type=float, default=1.0, help="voxelisation pitch for resection")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -70,11 +76,19 @@ def main() -> int:
         lab = by_emapa.get(emapa)
         if lab is None:
             continue
-        mesh = trimesh.load(stl, process=False)
-        if args.densify or args.lam:
-            mesh = densify_biharmonic(mesh, args.densify, args.lam)
+        mesh = trimesh.load(stl, process=True)
+        note = "STL"
+        if args.resection and slice_component_count(mesh) >= args.resection_min_slices:
+            # organ is a stack of disconnected slice-meshes -> interpolate between sections
+            # (fair AFTER decimation, never on the full ~1M-face reconstruction)
+            mesh = reconstruct_from_mesh(mesh, args.pitch, 0.0)
+            note = "resection"
+        elif args.densify:
+            mesh = densify_biharmonic(mesh, args.densify, 0.0)
         if args.max_faces and len(mesh.faces) > args.max_faces:
             mesh = mesh.simplify_quadric_decimation(face_count=args.max_faces)
+        if args.lam > 0:
+            mesh = biharmonic_fair(mesh, args.lam)   # light fairing on the decimated mesh
         r, g, b = lab.rgb
         mesh.visual.face_colors = [r, g, b, 255]
         node = f"EMAPA{m.group(1)}"
@@ -86,7 +100,7 @@ def main() -> int:
             "rgb": [r, g, b],
             "faces": int(len(mesh.faces)),
         })
-        print(f"  {emapa:12s} {lab.name:<32s} faces={len(mesh.faces):>7d}", flush=True)
+        print(f"  {emapa:12s} {lab.name:<32s} faces={len(mesh.faces):>7d}  [{note}]", flush=True)
 
     if not manifest:
         print("no STL surfaces matched labels")
