@@ -165,6 +165,12 @@ def _rotation_about(axis: np.ndarray, theta: float) -> np.ndarray:
     return np.eye(3) * c + s * K + (1 - c) * np.outer(axis, axis)
 
 
+# Labels that are fragmentary delineation noise in the volume stages (hundreds of scattered
+# specks) — big enough to pass a size filter, yet their centroids land anywhere and wreck
+# any fit. Excluded from the roll optimisation regardless of stage.
+NOISY_LABELS = {"EMAPA18010", "EMAPA19143"}     # rib, femur
+
+
 def align_frames(cur_worlds: dict[str, np.ndarray], ref_worlds: dict[str, np.ndarray],
                  min_verts: int = 2000) -> tuple[np.ndarray, str]:
     """Rigid rotation putting one stage's organs onto a reference stage's (best effort).
@@ -182,6 +188,7 @@ def align_frames(cur_worlds: dict[str, np.ndarray], ref_worlds: dict[str, np.nda
     R0 = body_alignment(cur_axes, cur_ht, ref_axes, ref_ht)
 
     shared = [n for n in cur_worlds if n in ref_worlds
+              and n not in NOISY_LABELS
               and min(len(cur_worlds[n]), len(ref_worlds[n])) >= min_verts]
     if len(shared) < 3:
         return R0, f"long-axis only ({len(shared)} robust shared organs; roll left to PCA)"
